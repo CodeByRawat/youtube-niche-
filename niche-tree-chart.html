@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>YouTube Niche Tree</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;background:#0f1115;overflow:hidden;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+  svg{width:100vw;height:100vh;display:block;cursor:grab}
+  svg:active{cursor:grabbing}
+  .link{fill:none;stroke-width:1.4px}
+  .node circle{stroke-width:2px;cursor:pointer}
+  .node text{fill:#dfe2ea;font-size:10.5px;pointer-events:none;paint-order:stroke;stroke:#0f1115;stroke-width:3px}
+  .controls{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:10}
+  .ctlbtn{width:40px;height:40px;border-radius:10px;background:#3b5fc4;color:#fff;border:none;
+    font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}
+  .ctlbtn:hover{background:#4a6fd8}
+  .title{position:fixed;top:16px;left:20px;color:#e8eaf0;font-size:14px;letter-spacing:.03em;z-index:10;opacity:.8}
+  .hint{position:fixed;top:38px;left:20px;color:#8a8fa3;font-size:11px;z-index:10}
+</style>
+</head>
+<body>
+<div class="title">YouTube niche tree</div>
+<div class="hint">click a node to expand / collapse · scroll or pinch to zoom · drag to pan</div>
+<svg></svg>
+<div class="controls">
+  <button class="ctlbtn" id="home" title="Reset view">&#8962;</button>
+  <button class="ctlbtn" id="zin" title="Zoom in">+</button>
+  <button class="ctlbtn" id="zout" title="Zoom out">&minus;</button>
+</div>
+
+<script>
+const RAW=[
+["Finance and money",15,45,"high",[["Personal finance",["Budgeting systems","Debt payoff order","Emergency funds","Salary breakdowns"]],["Investing and stocks",["Index fund basics","Dividend portfolios","Stock analysis","Portfolio updates"]],["Crypto and Web3",["Coin explainers","Wallet security","DeFi walkthroughs","Market cycle history"]],["Credit cards and points",["Card comparisons","Travel hacking","Reward maths","Churning strategy"]],["Real estate",["First home buying","Rental yield maths","REITs","Local market breakdowns"]],["Insurance and tax",["Term vs whole life","Health plan picking","Deductions","Filing walkthroughs"]],["Make money online",["Freelance paths","Digital products","Affiliate builds","Income reports"]]]],
+["Business and entrepreneurship",14,35,"med",[["Startups",["Founder stories","Fundraising explained","MVP builds","Failure post-mortems"]],["Ecommerce",["Dropshipping reality checks","Shopify builds","Amazon FBA","Product research"]],["Freelancing and agency",["Client acquisition","Pricing","Cold outreach","Scaling services"]],["SaaS and software business",["Tool reviews","No-code builds","MRR journeys","Churn fixes"]],["Sales and negotiation",["Cold call teardowns","Objection handling","Deal psychology"]],["Marketing case studies",["Ad breakdowns","Brand teardowns","Funnel autopsies"]],["Business documentaries",["Rise and fall stories","Industry deep dives","Founder profiles"]]]],
+["Technology and AI",8,25,"high",[["AI tools and workflows",["Weekly tool roundups","Prompt systems","Agent builds","Automation stacks"]],["Coding and programming",["Language tutorials","Project builds","Interview prep","Code reviews"]],["Gadget and phone reviews",["Comparisons","Long-term reviews","Budget picks","Teardowns"]],["PC building and hardware",["Budget builds","Benchmarks","Cooling","GPU value analysis"]],["Cybersecurity and privacy",["Hacking explainers","OSINT","VPN testing","Breach case studies"]],["Software tutorials",["Excel","Notion","Figma","Blender"]],["Smart home and IoT",["Setup guides","Automation routines","Device comparisons"]]]],
+["Health, fitness and wellness",8,18,"high",[["Strength training",["Programming","Form checks","Progressive overload","Home gym setups"]],["Weight loss and recomposition",["Calorie basics","Transformation logs","Plateau fixes"]],["Nutrition and food science",["Protein","Supplements","Myth debunking","Meal design"]],["Mental health",["Anxiety tools","Therapy explained","Burnout","Focus and attention"]],["Yoga and mobility",["Morning flows","Desk stretches","Injury prevention"]],["Longevity and biohacking",["Sleep optimisation","Bloodwork","Protocols","Ageing science"]],["Running and endurance",["Couch to 5k","Marathon training","Gear","Pacing strategy"]]]],
+["Faceless and automation",5,20,"med",[["Stock-footage documentaries",["True crime","Disasters","Corporate collapses","Unsolved mysteries"]],["Animated explainers",["Stick figure","Whiteboard","Motion graphics","Infographic style"]],["Scary stories and horror",["Narrated creepypasta","Folklore","Unsolved cases"]],["Sleep and ambience",["Rain sounds","Eight-hour tracks","Guided sleep","Lo-fi"]],["Nature and wildlife",["4K scenery","Animal behaviour","Ocean","Relaxation reels"]],["Data visualisation",["Bar chart races","Comparisons","Scale videos","Ranked countdowns"]],["Quiz, trivia and lists",["IQ tests","Guess the country","Fact countdowns"]]]],
+["Auto and machines",6,15,"med",[["Car reviews and buying",["Used car picks","Comparisons","Real ownership costs"]],["Project builds and restoration",["Engine swaps","Rebuilds","Restomods","Garage series"]],["EVs and future mobility",["Range tests","Charging","Battery tech","Policy explainers"]],["Motorcycles",["Touring","Gear reviews","Maintenance","Riding skill"]],["Aviation",["Flight explainers","Incident analysis","Cockpit content","Plane spotting"]],["Trucks, trains and heavy machinery",["Logistics","Operating","Mega-machine profiles"]],["Racing and motorsport tech",["Aerodynamics","Race strategy","Simulator content"]]]],
+["Home, DIY and making",5,15,"med",[["Woodworking and furniture",["Beginner builds","Joinery","Shop tours","Tool reviews"]],["Home renovation",["Room makeovers","Flooring","Plumbing","Cost breakdowns"]],["Interior design and decor",["Styling","Small spaces","Colour theory","Budget upgrades"]],["Gardening",["Balcony gardens","Hydroponics","Composting","Seasonal guides"]],["Restoration and repair",["Rusty tools","Antiques","Electronics","Appliance fixes"]],["3D printing and maker tech",["Printer reviews","Project files","CNC","Laser cutting"]],["Cleaning and organising",["Deep cleans","Storage systems","Decluttering routines"]]]],
+["Self-improvement and lifestyle",6,14,"high",[["Productivity systems",["Note-taking","Time blocking","Task apps","Deep work"]],["Habits and discipline",["Routine builds","30-day challenges","Willpower science"]],["Career and job search",["Resume teardowns","Interviews","Switching fields","Salary negotiation"]],["Minimalism and slow living",["Decluttering","Spending less","Digital detox"]],["Study with me and focus",["Pomodoro sessions","Ambient study","Exam sprints"]],["Relationships and social skills",["Dating advice","Communication","Friendship","Conflict"]],["Style and grooming",["Capsule wardrobes","Skincare","Hair","Budget fashion"]]]],
+["Spirituality and philosophy",5,12,"low",[["Stoicism and ancient wisdom",["Marcus Aurelius themes","Daily practice","Adversity"]],["Meditation and mindfulness",["Guided sessions","Breathwork","Silence practice"]],["Eastern philosophy",["Zen","Buddhism","Tao","Non-duality","Vedanta"]],["Devotional and regional",["Chants","Scripture explainers","Festivals","Bhajans"]],["Philosophy explainers",["Existentialism","Ethics thought experiments","Thinker profiles"]],["Astrology and esoteric",["Birth charts","Tarot","Numerology","Symbolism"]],["Life wisdom stories",["Parables","Moral tales","Fables with a lesson"]]]],
+["Education and explainers",4,12,"med",[["Science explainers",["Physics","Chemistry","Biology","Counterintuitive results"]],["History and civilisation",["Ancient daily life","War narratives","Forgotten events"]],["Psychology and behaviour",["Famous experiments","Cognitive biases","Persuasion","Social dynamics"]],["Geography and maps",["Borders","Why cities exist","Mapping mysteries"]],["Space and astronomy",["Missions","Cosmology","Planetary science","Telescope discoveries"]],["Engineering and how things work",["Infrastructure","Machines","Failure analysis","Manufacturing"]],["Exam prep and academics",["Syllabus breakdowns","Problem solving","Study strategy"]]]],
+["Travel and places",4,12,"high",[["City and country guides",["Three-day itineraries","First-timer guides","Cost breakdowns"]],["Budget and backpacking",["Cheap flights","Hostels","Low-spend challenges"]],["Luxury and hotel reviews",["First class","Resort tours","Points redemptions"]],["Nomad and van life",["Remote work setups","Van builds","Long-stay costs"]],["Culture immersion",["Living with locals","Language attempts","Rural life"]],["Off-the-map places",["Abandoned towns","Closed borders","Extreme locations"]],["Transport experiences",["Long train rides","Ferries","Airline comparisons"]]]],
+["Arts and creative skills",4,12,"med",[["Drawing and painting",["Fundamentals","Watercolour","Character design","Timelapses"]],["Digital art and design",["Procreate","Photoshop","Illustration workflow","Portfolio building"]],["Photography and cinematography",["Lighting","Composition","Gear","Lightroom editing"]],["Video editing and VFX",["Premiere","DaVinci","After Effects","Motion graphics"]],["Music production",["Beat making","Mixing","DAW tutorials","Sample flips"]],["Instrument tutorials",["Guitar","Piano","Drums","Song breakdowns"]],["Writing and storytelling",["Screenwriting","Worldbuilding","Publishing","Story structure"]]]],
+["Food and cooking",3,10,"high",[["Quick and easy recipes",["15-minute meals","One-pan","Five-ingredient"]],["Regional and traditional cuisine",["Home-style dishes","Family recipes","Festival food"]],["Baking and desserts",["Bread","Cakes","No-oven","Decorating"]],["Meal prep and budget cooking",["Weekly plans","Cheap protein","Student meals"]],["Street food and food travel",["Vendor profiles","Market tours","City food maps"]],["Food science",["Why recipes work","Fermentation","Technique testing"]],["Diet-specific cooking",["Vegan","Keto","High-protein","Gluten-free"]]]],
+["Sports and outdoors",3,9,"med",[["Analysis and tactics",["Match breakdowns","Formations","Statistical deep dives"]],["Skills and coaching",["Drills","Technique","Training plans"]],["Combat sports",["Technique breakdowns","Fight analysis","Training logs"]],["Fishing and hunting",["Gear","Locations","Catch-and-cook","Season guides"]],["Hiking and camping",["Trail guides","Gear tests","Bushcraft","Survival"]],["Cycling and endurance",["Bike builds","Routes","Training","Gravel and mountain"]],["Extreme and adventure",["Climbing","Surfing","Skiing","Expeditions"]]]],
+["Pets and animals",3,9,"med",[["Dog training",["Puppy basics","Behaviour fixes","Breed guides"]],["Cat content and care",["Behaviour explained","Health","Compilations"]],["Aquariums and reptiles",["Tank builds","Aquascaping","Exotic care"]],["Wildlife documentaries",["Predator behaviour","Migration","Species profiles"]],["Vet and animal health",["Common conditions","First aid","Cost guides"]],["Rescue and rehoming",["Rescue stories","Fostering","Shelter work"]],["Farm and working animals",["Homesteading","Livestock","Horses","Herding"]]]],
+["Gaming",2,8,"high",[["Let's plays and playthroughs",["Story games","Blind runs","Co-op series"]],["Competitive and esports",["Ranked climbs","Meta analysis","Tournament breakdowns"]],["Speedruns and challenges",["Any-percent","No-hit runs","Self-imposed rules"]],["Game reviews and critique",["Early access","Hidden gems","Value verdicts"]],["Lore and story analysis",["World theories","Endings explained","Character deep dives"]],["Game development",["Engine tutorials","Solo dev logs","Asset workflows"]],["Retro and mobile gaming",["Emulation","Console history","Mobile picks"]]]],
+["Entertainment and commentary",2,7,"high",[["Video essays and analysis",["Film theory","Cultural criticism","Long-form arguments"]],["Movie and series breakdowns",["Easter eggs","Endings explained","Franchise recaps"]],["Reaction and review",["First watch","Rankings","Tier lists"]],["Comedy and sketch",["Parody","Character bits","Improv","Memes"]],["Anime and manga",["Recaps","Power scaling","Seasonal picks"]],["Music commentary",["Album reviews","Production breakdowns","Artist history"]],["Pop culture and internet",["Creator news","Timeline explainers","Deep dives"]]]],
+["Kids and family",1,5,"high",[["Nursery rhymes and songs",["Classic rhymes","Original songs","Sing-alongs"]],["Bedtime and moral stories",["Fables","Folk tales","Calm narration"]],["Early learning",["Alphabet","Numbers","Colours","Phonics"]],["Kids science and curiosity",["Simple experiments","Why questions","Nature for children"]],["Toys and play",["Unboxing","Pretend play","Build-alongs"]],["Parenting advice",["Newborn care","Sleep training","Discipline","Dads"]],["Pregnancy and postpartum",["Week by week","Birth prep","Recovery"]]]]
+];
+
+const compColor={low:"#3fb37f",med:"#e0a13a",high:"#d8607a"};
+const famColor="#4f7fe0";
+const rootColor="#4fb8d8";
+const leafColor="#8a5fd8";
+
+function buildData(){
+  return {
+    name:"YouTube",
+    depth:0,
+    children:RAW.map(f=>({
+      name:f[0],
+      cpmLo:f[1],cpmHi:f[2],comp:f[3],
+      depth:1,
+      children:f[4].map(s=>({
+        name:s[0],
+        depth:2,
+        children:s[1].map(m=>({name:m,depth:3}))
+      }))
+    }))
+  };
+}
+
+let i=0;
+const root=d3.hierarchy(buildData());
+root.x0=0;root.y0=0;
+root.children.forEach(collapseChildren);
+function collapseChildren(d){
+  if(d.children){d._children=d.children;d._children.forEach(collapseChildren);d.children=null;}
+}
+
+const svg=d3.select("svg");
+const gZoom=svg.append("g");
+const gLinks=gZoom.append("g").attr("fill","none");
+const gNodes=gZoom.append("g");
+
+const zoom=d3.zoom().scaleExtent([0.15,3]).on("zoom",e=>gZoom.attr("transform",e.transform));
+svg.call(zoom);
+
+const dx=175, dy=120;
+const treeLayout=d3.tree().nodeSize([dx,dy]);
+
+function nodeColor(d){
+  if(d.depth===0)return rootColor;
+  if(d.depth===1)return famColor;
+  if(d.depth===2)return compColor[d.data.comp?d.data.comp:(d.parent&&d.parent.data.comp)||"med"]||famColor;
+  return leafColor;
+}
+function nodeRadius(d){return d.depth===0?13:d.depth===1?11:d.depth===2?8:6;}
+
+function update(source){
+  const nodes=root.descendants();
+  const links=root.links();
+  treeLayout(root);
+
+  const t=svg.transition().duration(400);
+
+  const node=gNodes.selectAll("g.node").data(nodes,d=>d.id||(d.id=++i));
+  const nodeEnter=node.enter().append("g")
+    .attr("class","node")
+    .attr("transform",`translate(${source.x0},${source.y0})`)
+    .on("click",(event,d)=>{
+      if(d.children){d._children=d.children;d.children=null;}
+      else{d.children=d._children;d._children=null;}
+      update(d);
+    });
+
+  nodeEnter.append("circle")
+    .attr("r",1e-6)
+    .attr("fill",d=>d._children?nodeColor(d):(d.children?nodeColor(d):"#1b1e27"))
+    .attr("stroke",d=>nodeColor(d));
+
+  nodeEnter.append("text")
+    .attr("y",d=>nodeRadius(d)+13)
+    .attr("text-anchor","middle")
+    .text(d=>d.data.name+(d.depth===1&&d.data.cpmLo?` $${d.data.cpmLo}-${d.data.cpmHi}`:""));
+
+  const nodeUpdate=node.merge(nodeEnter);
+  nodeUpdate.transition(t).attr("transform",d=>`translate(${d.x},${d.y})`);
+  nodeUpdate.select("circle").transition(t)
+    .attr("r",d=>nodeRadius(d))
+    .attr("fill",d=>d._children?nodeColor(d):(d.children?nodeColor(d):"#1b1e27"));
+
+  node.exit().transition(t).remove()
+    .attr("transform",d=>`translate(${source.x},${source.y})`)
+    .select("circle").attr("r",1e-6);
+
+  const link=gLinks.selectAll("path.link").data(links,d=>d.target.id);
+  const linkEnter=link.enter().append("path")
+    .attr("class","link")
+    .attr("stroke",d=>nodeColor(d.target))
+    .attr("stroke-opacity",0.55)
+    .attr("d",()=>{
+      const o={x:source.x0,y:source.y0};
+      return diagonal(o,o);
+    });
+
+  link.merge(linkEnter).transition(t)
+    .attr("d",d=>diagonal(d.source,d.target));
+
+  link.exit().transition(t).remove()
+    .attr("d",()=>{
+      const o={x:source.x,y:source.y};
+      return diagonal(o,o);
+    });
+
+  root.eachBefore(d=>{d.x0=d.x;d.y0=d.y;});
+}
+
+function diagonal(s,t){
+  return `M${s.x},${s.y} C${s.x},${(s.y+t.y)/2} ${t.x},${(s.y+t.y)/2} ${t.x},${t.y}`;
+}
+
+function fitToScreen(){
+  const nodes=root.descendants();
+  let minX=Infinity,maxX=-Infinity,maxY=-Infinity;
+  nodes.forEach(d=>{
+    if(d.x<minX)minX=d.x;
+    if(d.x>maxX)maxX=d.x;
+    if(d.y>maxY)maxY=d.y;
+  });
+  const svgNode=svg.node();
+  const w=svgNode.clientWidth,h=svgNode.clientHeight;
+  const pad=60;
+  const contentW=(maxX-minX)+pad*2;
+  const contentH=maxY+120;
+  const scale=Math.max(0.3,Math.min((w-pad*2)/contentW,(h-pad*2)/contentH,1.1));
+  const tx=w/2-((minX+maxX)/2)*scale;
+  const ty=50;
+  svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity.translate(tx,ty).scale(scale));
+}
+window.addEventListener("resize",fitToScreen);
+
+document.getElementById("home").onclick=fitToScreen;
+document.getElementById("zin").onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1.35);
+document.getElementById("zout").onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1/1.35);
+
+update(root);
+fitToScreen();
+</script>
+</body>
+</html>
